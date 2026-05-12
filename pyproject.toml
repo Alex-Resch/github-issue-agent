@@ -1,0 +1,24 @@
+[project]
+name = "github-issue-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.101.0",
+    "fastapi>=0.136.1",
+    "httpx>=0.28.1",
+    "instructor>=1.15.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "uvicorn>=0.46.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
