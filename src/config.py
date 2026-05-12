@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     MIN_SCORE_TO_NOTIFY: int = 40
 
     class Config:
-        env_file = ".env"
+        env_file = "../.env"
         env_file_encoding = "utf-8"
 
 
