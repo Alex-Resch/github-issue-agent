@@ -1,14 +1,13 @@
+import asyncio
 import logging
-
-import httpx
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from config import settings
 from models import GitHubIssueEvent, IssueEvaluation
 
 logger = logging.getLogger(__name__)
-
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-http_client = httpx.AsyncClient(timeout=30)
 
 
 def score_badge(score: int) -> str:
@@ -37,16 +36,13 @@ def build_html_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -
     .header h1 {{ margin: 0 0 4px; font-size: 18px; }}
     .header p {{ margin: 0; opacity: 0.7; font-size: 13px; }}
     .body {{ padding: 24px 28px; }}
-    .score-row {{ display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }}
-    .score-circle {{ width: 72px; height: 72px; border-radius: 50%; background: #0969da; color: #fff;
-                     display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex-shrink: 0; }}
     .score-meta h2 {{ margin: 0 0 4px; font-size: 16px; }}
     .score-meta p {{ margin: 0; color: #57606a; font-size: 14px; }}
     table {{ width: 100%; border-collapse: collapse; margin: 16px 0; }}
-    td {{ padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: top; }}
+    td {{ padding: 8px 0; border-bottom: 1px solid #c8ccd0; font-size: 14px; vertical-align: top; }}
     td:first-child {{ width: 140px; color: #57606a; font-weight: 500; }}
     .reasoning {{ background: #f6f8fa; border-left: 3px solid #0969da; border-radius: 4px; padding: 12px 16px; font-size: 14px; color: #24292f; line-height: 1.6; margin: 16px 0; }}
-    .btn {{ display: inline-block; background: #0969da; color: #fff; padding: 10px 20px; border-radius: 6px;
+    .btn {{ display: inline-block; background: #0969da; color: #ffffff !important; padding: 10px 20px; border-radius: 6px;
             text-decoration: none; font-size: 14px; font-weight: 500; margin-top: 20px; }}
     .footer {{ padding: 16px 28px; border-top: 1px solid #e1e4e8; font-size: 12px; color: #8c959f; }}
   </style>
@@ -58,13 +54,24 @@ def build_html_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -
       <p>New feature request detected by your Issue Agent</p>
     </div>
     <div class="body">
-      <div class="score-row">
-        <div class="score-circle">{ev.score}</div>
-        <div class="score-meta">
-          <h2>{badge}</h2>
-          <p>{ev.impression}</p>
-        </div>
-      </div>
+
+      <table cellpadding="0" cellspacing="0" style="width: auto; margin-bottom: 24px; border: none;">
+        <tr>
+          <td style="padding: 0; border: none; vertical-align: middle;">
+            <div style="width: 72px; height: 72px; border-radius: 36px; background: #0969da;
+                        color: #ffffff; font-size: 24px; font-weight: 700;
+                        text-align: center; line-height: 72px;">
+              {ev.score}
+            </div>
+          </td>
+          <td style="padding: 0 0 0 16px; border: none; vertical-align: middle;">
+            <div class="score-meta">
+              <h2>{badge}</h2>
+              <p>{ev.impression}</p>
+            </div>
+          </td>
+        </tr>
+      </table>
 
       <table>
         <tr><td>Issue</td><td><strong>#{issue.number}</strong> — {issue.title}</td></tr>
@@ -81,7 +88,7 @@ def build_html_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -
         {ev.reasoning}
       </div>
 
-      <a class="btn" href="{issue.html_url}" target="_blank">View Issue on GitHub →</a>
+      <a class="btn" href="{issue.html_url}" target="_blank" style="color: #ffffff !important;">View Issue on GitHub →</a>
     </div>
     <div class="footer">
       Sent by your GitHub Issue Agent · {repo.html_url}
@@ -111,6 +118,12 @@ Reasoning:
 """
 
 
+def _send_smtp(msg: MIMEMultipart) -> None:
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(settings.EMAIL_FROM, settings.GMAIL_APP_PASSWORD)
+        server.sendmail(settings.EMAIL_FROM, settings.EMAIL_TO, msg.as_string())
+
+
 async def send_evaluation_email(event: GitHubIssueEvent, ev: IssueEvaluation) -> None:
     if ev.score < settings.MIN_SCORE_TO_NOTIFY:
         logger.info(
@@ -125,26 +138,13 @@ async def send_evaluation_email(event: GitHubIssueEvent, ev: IssueEvaluation) ->
         f"[{badge}] {repo.name} #{issue.number} — {issue.title} (Score: {ev.score}/100)"
     )
 
-    payload = {
-        "sender": {"name": settings.EMAIL_FROM_NAME, "email": settings.EMAIL_FROM},
-        "to": [{"email": settings.EMAIL_TO, "name": settings.EMAIL_TO_NAME}],
-        "subject": subject,
-        "htmlContent": build_html_email(event, ev, badge),
-        "textContent": build_text_email(event, ev, badge),
-    }
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = settings.EMAIL_FROM
+    msg["To"] = settings.EMAIL_TO
+    msg.attach(MIMEText(build_text_email(event, ev, badge), "plain"))
+    msg.attach(MIMEText(build_html_email(event, ev, badge), "html"))
 
-    try:
-        response = await http_client.post(
-            BREVO_API_URL,
-            headers={
-                "api-key": settings.BREVO_API_KEY,
-                "content-type": "application/json",
-            },
-            json=payload,
-        )
-        response.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Brevo API error {e.response.status_code}: {e.response.text}")
-        raise
+    await asyncio.get_event_loop().run_in_executor(None, _send_smtp, msg)
 
     logger.info(f"Email sent for issue #{issue.number} (score: {ev.score})")
