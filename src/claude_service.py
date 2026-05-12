@@ -3,7 +3,7 @@ import instructor
 import anthropic
 
 from config import settings
-from models import GitHubIssueEvent, IssueEvaluation
+from models import IssueEvaluation, Issue, Repository
 
 logger = logging.getLogger(__name__)
 client = instructor.from_anthropic(
@@ -27,10 +27,7 @@ or the timing is unclear.
 """
 
 
-def build_user_prompt(event: GitHubIssueEvent) -> str:
-    repo = event.repository
-    issue = event.issue
-
+def build_user_prompt(repo: Repository, issue: Issue) -> str:
     return f"""Evaluate this GitHub feature request:
 
 **Repository:** {repo.full_name}
@@ -46,11 +43,11 @@ def build_user_prompt(event: GitHubIssueEvent) -> str:
 """
 
 
-async def evaluate_issue_opened(event: GitHubIssueEvent) -> IssueEvaluation:
+async def evaluate_issue_opened(repo: Repository, issue: Issue) -> IssueEvaluation:
     return await client.messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": build_user_prompt(event)}],
+        messages=[{"role": "user", "content": build_user_prompt(repo, issue)}],
         response_model=IssueEvaluation,
     )

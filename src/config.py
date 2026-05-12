@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # Scoring threshold — issues below this score are skipped
     MIN_SCORE_TO_NOTIFY: int = 40
 
+    # Polling
+    REPOS: list[str] = ["pydantic/pydantic-ai", "567-labs/instructor"]
+    POLL_INTERVAL_MINUTES: int = 20
+
     class Config:
         env_file = "../.env"
         env_file_encoding = "utf-8"

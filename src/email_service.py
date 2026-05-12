@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from config import settings
-from models import GitHubIssueEvent, IssueEvaluation
+from models import IssueEvaluation, Issue, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,9 @@ def score_badge(score: int) -> str:
         return "🔴 Skip"
 
 
-def build_html_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -> str:
-    repo = event.repository
-    issue = event.issue
-
+def build_html_email(
+    repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
+) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -98,9 +97,9 @@ def build_html_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -
 </html>"""
 
 
-def build_text_email(event: GitHubIssueEvent, ev: IssueEvaluation, badge: str) -> str:
-    repo = event.repository
-    issue = event.issue
+def build_text_email(
+    repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
+) -> str:
     return f"""GitHub Issue Agent — New Feature Request
 
 Repo:        {repo.full_name}
@@ -124,16 +123,16 @@ def _send_smtp(msg: MIMEMultipart) -> None:
         server.sendmail(settings.EMAIL_FROM, settings.EMAIL_TO, msg.as_string())
 
 
-async def send_evaluation_email(event: GitHubIssueEvent, ev: IssueEvaluation) -> None:
+async def send_evaluation_email(
+    repo: Repository, issue: Issue, ev: IssueEvaluation
+) -> None:
     if ev.score < settings.MIN_SCORE_TO_NOTIFY:
         logger.info(
-            f"Score {ev.score} below threshold {settings.MIN_SCORE_TO_NOTIFY} — skipping email"
+            f"Score {ev.score} below threshold {settings.MIN_SCORE_TO_NOTIFY} — skipping email. reason: {ev.reasoning}"
         )
         return
 
     badge = score_badge(ev.score)
-    repo = event.repository
-    issue = event.issue
     subject = (
         f"[{badge}] {repo.name} #{issue.number} — {issue.title} (Score: {ev.score}/100)"
     )
@@ -142,8 +141,8 @@ async def send_evaluation_email(event: GitHubIssueEvent, ev: IssueEvaluation) ->
     msg["Subject"] = subject
     msg["From"] = settings.EMAIL_FROM
     msg["To"] = settings.EMAIL_TO
-    msg.attach(MIMEText(build_text_email(event, ev, badge), "plain"))
-    msg.attach(MIMEText(build_html_email(event, ev, badge), "html"))
+    msg.attach(MIMEText(build_text_email(repo, issue, ev, badge), "plain"))
+    msg.attach(MIMEText(build_html_email(repo, issue, ev, badge), "html"))
 
     await asyncio.get_event_loop().run_in_executor(None, _send_smtp, msg)
 
