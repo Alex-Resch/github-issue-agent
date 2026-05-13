@@ -22,7 +22,12 @@ class Settings(BaseSettings):
     MIN_SCORE_TO_NOTIFY: int = 40
 
     # Polling
-    REPOS: list[str] = ["pydantic/pydantic-ai", "567-labs/instructor"]
+    REPOS: list[str] = [
+        "pydantic/pydantic-ai",
+        "567-labs/instructor",
+        "a2aproject/a2a-python",
+        "PrefectHQ/fastmcp",
+    ]
     POLL_INTERVAL_MINUTES: int = 20
 
 
