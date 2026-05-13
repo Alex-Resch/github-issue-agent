@@ -1,14 +1,24 @@
 # GitHub Issue Agent
 
-Evaluates incoming GitHub feature requests via Claude and sends a scored email report via Brevo.
+Monitors configured GitHub repos for actionable open-source contribution opportunities.
+Polls for new feature request issues opened by top 5 contributors and new comments from top 5 contributors on existing issues.
+Passes issue details and comments to Claude, which scores each opportunity 0–100 based on how worthwhile it would be to open a PR.
+Sends a structured Gmail report for anything above your configured threshold.
 
 ## Architecture
 
 ```
-GitHub Webhook → Cloud Run (FastAPI)
-                    ├── Filter: feature requests only
-                    ├── Claude API → Score (0–100) + analysis
-                    └── Brevo → HTML email to you
+Cloud Scheduler (every 20 min - so the container doesn't go idle)
+        ↓
+Cloud Run (FastAPI)
+        ├──> Poll: new issues from top 5 contributors
+        │       ├──> Filter: feature requests only
+        │       └──> Claude API → Score (0–100) + analysis
+        └──> Poll: new comments from top 5 contributors
+                ├──> Fetch full issue + all comments
+                └──> Claude API → Score (0–100) + analysis
+                │
+                └──> if score ≥ threshold → Send structured email with issue details, comment context, and Claude's analysis
 ```
 
 ## Setup
@@ -23,37 +33,41 @@ cp .env.example .env
 ### 2. Run locally
 
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+uv sync
+uvicorn src.main:app --reload
 ```
 
 ### 3. Deploy to Cloud Run
 
-```bash
-# Build and push image
-gcloud builds submit --tag gcr.io/YOUR_PROJECT/issue-agent
+Connect your GitHub repository via the Cloud Run console:
 
-# Deploy
-gcloud run deploy issue-agent \
-  --image gcr.io/YOUR_PROJECT/issue-agent \
-  --platform managed \
-  --region europe-west1 \
-  --allow-unauthenticated \
-  --set-env-vars ANTHROPIC_API_KEY=sk-ant-...,BREVO_API_KEY=xkeysib-...,EMAIL_TO=you@email.com,...
-```
+1. Go to **Cloud Run → Create Service → Connect Repository**
+2. Select your repository and branch (`main`)
+3. Set build type to **Dockerfile**
+4. Add all environment variables from `.env`
+5. Set **Ingress** to **All** (public)
+6. Deploy
 
-Your webhook URL will be: `https://issue-agent-xxxx-ew.a.run.app/webhook/github`
+### 4. Set up Cloud Scheduler
 
-### 4. Configure GitHub Webhooks
+Create a job to keep the container alive and trigger polling:
 
-For each repo you want to monitor:
+1. Go to **Cloud Scheduler → Create Job**
+2. **Frequency:** `*/20 * * * *`
+3. **Target:** HTTP GET `https://your-cloud-run-url/health`
 
-1. Go to **Settings → Webhooks → Add webhook**
-2. **Payload URL:** `https://your-cloud-run-url/webhook/github`
-3. **Content type:** `application/json`
-4. **Secret:** Same value as `GITHUB_WEBHOOK_SECRET` in your `.env`
-5. **Events:** Select **"Issues"** only
-6. Save
+## Configuration
+
+| Variable | Description |
+|---|---|
+| `GITHUB_TOKEN` | GitHub personal access token (repo scope) |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `EMAIL_FROM` | Gmail address to send from |
+| `EMAIL_TO` | Your email address |
+| `GMAIL_APP_PASSWORD` | Gmail app password (not your regular password) |
+| `REPOS` | Comma-separated list of repos to monitor (e.g. `pydantic/pydantic-ai,567-labs/instructor`) |
+| `POLL_INTERVAL_MINUTES` | Polling interval in minutes (default: `20`) |
+| `MIN_SCORE_TO_NOTIFY` | Minimum score to trigger an email (default: `40`) |
 
 ## Feature Request Detection
 
@@ -62,32 +76,21 @@ An issue is treated as a feature request if **any** of the following match:
 - **Labels:** `feature`, `feature request`, `feature-request`, `enhancement`, `type: feature`
 - **Title keywords:** `feature request`, `feature:`, `[feature]`, `add support`, `would be great if`
 
-## Score Threshold
+## Scoring
 
-Set `MIN_SCORE_TO_NOTIFY` in `.env` to suppress emails for low-scoring issues. For example, `MIN_SCORE_TO_NOTIFY=60` means only issues scoring 60+ trigger an email.
+Claude evaluates each issue on a 0–100 scale:
 
-## Email Fields
-
-| Field | Description |
+| Score | Meaning |
 |---|---|
-| Score | 0–100 composite value |
-| Difficulty | Low / Medium / High / Very High |
-| Scope | Minimal / Small / Medium / Large |
-| Impression | One-sentence summary |
-| Reasoning | 2–4 sentence explanation |
-| Recommendation | Concrete next step |
+| 80–100 | 🟢 High Priority — highly impactful, well-scoped |
+| 60–79 | 🟡 Worth Exploring — interesting but needs research |
+| 40–59 | 🟠 Low Priority — possible but not urgent |
+| 0–39 | 🔴 Skip — not worth pursuing |
 
-## Project Structure
+Issues with a score below `MIN_SCORE_TO_NOTIFY` are logged but no email is sent.
 
-```
-app/
-  main.py              # FastAPI app + webhook handler
-  config.py            # Environment settings
-  models.py            # Pydantic models (GitHub payload + evaluation)
-  services/
-    claude_service.py  # Claude API evaluation
-    email_service.py   # Brevo HTML email
-Dockerfile
-requirements.txt
-.env.example
+## Running Tests
+
+```bash
+uv run pytest tests/ -v --cov=src
 ```
