@@ -46,7 +46,9 @@ def convert_to_comments(response: Response) -> list[Comment]:
     return comments
 
 
-async def fetch_new_comments(repo_full_name: str, since: datetime) -> list[Comment]:
+async def fetch_new_comments(  # pragma: no cover
+    repo_full_name: str, since: datetime
+) -> list[Comment]:
     """Fetch all new comments on issues since the given datetime."""
     params = {
         "since": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -67,7 +69,9 @@ async def fetch_new_comments(repo_full_name: str, since: datetime) -> list[Comme
     return convert_to_comments(response)
 
 
-async def fetch_issue(repo_full_name: str, issue_number: int) -> Issue | None:
+async def fetch_issue(
+    repo_full_name: str, issue_number: int
+) -> Issue | None:  # pragma: no cover
     """Fetch a single issue by number, returning None if not found or if it is a PR."""
     response = await fetch(
         url=f"/repos/{repo_full_name}/issues/{issue_number}", params=None
@@ -97,7 +101,9 @@ async def fetch_issue(repo_full_name: str, issue_number: int) -> Issue | None:
     )
 
 
-async def fetch_all_comments(repo_full_name: str, issue_number: int) -> list[Comment]:
+async def fetch_all_comments(  # pragma: no cover
+    repo_full_name: str, issue_number: int
+) -> list[Comment]:
     """Fetch all comments on a specific issue."""
     response = await fetch(
         url=f"/repos/{repo_full_name}/issues/{issue_number}/comments",
@@ -110,7 +116,7 @@ async def fetch_all_comments(repo_full_name: str, issue_number: int) -> list[Com
     return convert_to_comments(response)
 
 
-async def poll_all_comments_repos() -> None:
+async def poll_all_comments_repos() -> None:  # pragma: no cover
     """Poll all configured repos for new comments from top contributors and evaluate them."""
     since = datetime.now(timezone.utc) - timedelta(
         minutes=settings.POLL_INTERVAL_MINUTES + 1

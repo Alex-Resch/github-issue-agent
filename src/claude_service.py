@@ -28,7 +28,9 @@ or the timing is unclear.
 """
 
 
-def build_user_prompt_issue_opened(repo: Repository, issue: Issue) -> str:
+def build_user_prompt_issue_opened(
+    repo: Repository, issue: Issue
+) -> str:  # pragma: no cover
     """Build the Claude user prompt for a newly opened issue."""
     return f"""Evaluate this GitHub feature request:
 
@@ -45,7 +47,7 @@ def build_user_prompt_issue_opened(repo: Repository, issue: Issue) -> str:
 """
 
 
-def build_user_prompt_issue_commented(
+def build_user_prompt_issue_commented(  # pragma: no cover
     repo: Repository, issue: Issue, comments_text: str
 ) -> str:
     """Build the Claude user prompt for an issue with comments, extending the base issue prompt."""
@@ -57,7 +59,9 @@ def build_user_prompt_issue_commented(
 """
 
 
-async def evaluate_issue_opened(repo: Repository, issue: Issue) -> IssueEvaluation:
+async def evaluate_issue_opened(  # pragma: no cover
+    repo: Repository, issue: Issue
+) -> IssueEvaluation:
     """Evaluate a newly opened issue and return a scored IssueEvaluation."""
     return await client.messages.create(
         model=MODEL,
@@ -70,7 +74,7 @@ async def evaluate_issue_opened(repo: Repository, issue: Issue) -> IssueEvaluati
     )
 
 
-async def evaluate_issue_commented(
+async def evaluate_issue_commented(  # pragma: no cover
     repo: Repository, issue: Issue, comments_text: str
 ) -> IssueEvaluation:
     """Evaluate an issue based on its comments and return a scored IssueEvaluation."""

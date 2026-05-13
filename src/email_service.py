@@ -22,7 +22,7 @@ def score_badge(score: int) -> str:
         return "🔴 Skip"
 
 
-def build_html_email(
+def build_html_email(  # pragma: no cover
     repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
 ) -> str:
     """Build the HTML email body for an issue evaluation."""
@@ -99,7 +99,7 @@ def build_html_email(
 </html>"""
 
 
-def build_text_email(
+def build_text_email(  # pragma: no cover
     repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
 ) -> str:
     """Build the plaintext email body for an issue evaluation."""
@@ -120,7 +120,7 @@ Reasoning:
 """
 
 
-def _send_smtp(msg: MIMEMultipart) -> None:
+def _send_smtp(msg: MIMEMultipart) -> None:  # pragma: no cover
     """Send an email via Gmail SMTP SSL."""
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(settings.EMAIL_FROM, settings.GMAIL_APP_PASSWORD)

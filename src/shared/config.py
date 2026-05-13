@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
     # GitHub
     GITHUB_WEBHOOK_SECRET: str = ""
     GITHUB_TOKEN: str = ""
@@ -22,10 +24,6 @@ class Settings(BaseSettings):
     # Polling
     REPOS: list[str] = ["pydantic/pydantic-ai", "567-labs/instructor"]
     POLL_INTERVAL_MINUTES: int = 20
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 settings = Settings()

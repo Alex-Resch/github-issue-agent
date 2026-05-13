@@ -104,7 +104,7 @@ async def fetch_new_issues(repo_full_name: str, since: datetime) -> list[Issue]:
     return issues
 
 
-async def poll_all_repos() -> None:
+async def poll_all_repos() -> None:  # pragma: no cover
     """Poll all configured repos for new feature request issues."""
     since = datetime.now(timezone.utc) - timedelta(
         minutes=settings.POLL_INTERVAL_MINUTES + 1

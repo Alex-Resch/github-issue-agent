@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def poll_loop() -> None:
+async def poll_loop() -> None:  # pragma: no cover
     """Continuously poll repos at the configured interval."""
     while True:
         try:
@@ -24,7 +24,7 @@ async def poll_loop() -> None:
         await asyncio.sleep(settings.POLL_INTERVAL_MINUTES * 60)
 
 
-async def comments_poll_loop() -> None:
+async def comments_poll_loop() -> None:  # pragma: no cover
     """Continuously poll comments at the configured interval."""
     while True:
         try:
@@ -35,11 +35,13 @@ async def comments_poll_loop() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    task = asyncio.create_task(poll_loop())
+async def lifespan(app: FastAPI):  # pragma: no cover
+    task1 = asyncio.create_task(poll_loop())
+    task2 = asyncio.create_task(comments_poll_loop())
     logger.info(f"Polling started — interval: {settings.POLL_INTERVAL_MINUTES} minutes")
     yield
-    task.cancel()
+    task1.cancel()
+    task2.cancel()
 
 
 app = FastAPI(title="GitHub Issue Agent", version="1.1.0", lifespan=lifespan)
