@@ -29,6 +29,7 @@ or the timing is unclear.
 
 
 def build_user_prompt_issue_opened(repo: Repository, issue: Issue) -> str:
+    """Build the Claude user prompt for a newly opened issue."""
     return f"""Evaluate this GitHub feature request:
 
 **Repository:** {repo.full_name}
@@ -47,6 +48,7 @@ def build_user_prompt_issue_opened(repo: Repository, issue: Issue) -> str:
 def build_user_prompt_issue_commented(
     repo: Repository, issue: Issue, comments_text: str
 ) -> str:
+    """Build the Claude user prompt for an issue with comments, extending the base issue prompt."""
     issue_opened_prompt = build_user_prompt_issue_opened(repo, issue)
     return f"""{issue_opened_prompt}
 
@@ -56,6 +58,7 @@ def build_user_prompt_issue_commented(
 
 
 async def evaluate_issue_opened(repo: Repository, issue: Issue) -> IssueEvaluation:
+    """Evaluate a newly opened issue and return a scored IssueEvaluation."""
     return await client.messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,
@@ -70,6 +73,7 @@ async def evaluate_issue_opened(repo: Repository, issue: Issue) -> IssueEvaluati
 async def evaluate_issue_commented(
     repo: Repository, issue: Issue, comments_text: str
 ) -> IssueEvaluation:
+    """Evaluate an issue based on its comments and return a scored IssueEvaluation."""
     return await client.messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate(issue: Issue, top_contributors: set[str]) -> bool:
+    """Filter an issue based on feature request classification and top contributor authorship."""
     if not is_feature_request(issue):
         logger.info(f"Skipping #{issue.number} — not a feature request")
         return False
@@ -50,6 +51,7 @@ def is_feature_request(issue: Issue) -> bool:
 
 
 async def fetch_top_contributors(repo_full_name: str, top_n: int = 5) -> set[str]:
+    """Fetch the top N contributors of a repo as a lowercase set of usernames."""
     response = await fetch(
         url=f"/repos/{repo_full_name}/contributors", params={"per_page": top_n}
     )

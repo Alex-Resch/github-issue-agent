@@ -35,6 +35,7 @@ async def fetch_repo_info(repo_full_name: str) -> Repository | None:
 
 
 async def fetch(url: str, params: dict | None) -> Response:
+    """Send an authenticated GET request to the GitHub API."""
     async with httpx.AsyncClient() as client:
         return await client.get(
             BASE_GITHUB_URL + url,

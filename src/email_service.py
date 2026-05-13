@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def score_badge(score: int) -> str:
+    """Return an emoji badge string based on the score threshold."""
     if score >= 80:
         return "🟢 High Priority"
     elif score >= 60:
@@ -24,6 +25,7 @@ def score_badge(score: int) -> str:
 def build_html_email(
     repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
 ) -> str:
+    """Build the HTML email body for an issue evaluation."""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,6 +102,7 @@ def build_html_email(
 def build_text_email(
     repo: Repository, issue: Issue, ev: IssueEvaluation, badge: str
 ) -> str:
+    """Build the plaintext email body for an issue evaluation."""
     return f"""GitHub Issue Agent — New Feature Request
 
 Repo:        {repo.full_name}
@@ -118,6 +121,7 @@ Reasoning:
 
 
 def _send_smtp(msg: MIMEMultipart) -> None:
+    """Send an email via Gmail SMTP SSL."""
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(settings.EMAIL_FROM, settings.GMAIL_APP_PASSWORD)
         server.sendmail(settings.EMAIL_FROM, settings.EMAIL_TO, msg.as_string())
@@ -126,6 +130,7 @@ def _send_smtp(msg: MIMEMultipart) -> None:
 async def send_evaluation_email(
     repo: Repository, issue: Issue, ev: IssueEvaluation
 ) -> None:
+    """Send an evaluation email if the score meets the configured threshold."""
     if ev.score < settings.MIN_SCORE_TO_NOTIFY:
         logger.info(
             f"Score {ev.score} below threshold {settings.MIN_SCORE_TO_NOTIFY} — skipping email. reason: {ev.reasoning}"

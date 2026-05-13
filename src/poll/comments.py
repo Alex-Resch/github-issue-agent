@@ -18,6 +18,7 @@ BOTS = {"claude", "copilot", "devin", "cursoragent"}
 def validate(
     comment: Comment, top_contributors: set[str], seen_issues: set[int]
 ) -> bool:
+    """Filter a comment based on contributor status, seen issues, and bot detection."""
     if comment.commenter not in top_contributors:
         logger.info(f"Skipping comment by {comment.commenter} — not a top contributor")
         return False
@@ -33,6 +34,7 @@ def validate(
 
 
 def convert_to_comments(response: Response) -> list[Comment]:
+    """Parse a GitHub API response into a list of Comment objects."""
     comments: list[Comment] = []
     for user_comment in response.json():
         comment = Comment(
@@ -66,7 +68,7 @@ async def fetch_new_comments(repo_full_name: str, since: datetime) -> list[Comme
 
 
 async def fetch_issue(repo_full_name: str, issue_number: int) -> Issue | None:
-    """Fetch a single issue by number."""
+    """Fetch a single issue by number, returning None if not found or if it is a PR."""
     response = await fetch(
         url=f"/repos/{repo_full_name}/issues/{issue_number}", params=None
     )
@@ -109,7 +111,7 @@ async def fetch_all_comments(repo_full_name: str, issue_number: int) -> list[Com
 
 
 async def poll_all_comments_repos() -> None:
-    """Poll all configured repos for new comments on issues."""
+    """Poll all configured repos for new comments from top contributors and evaluate them."""
     since = datetime.now(timezone.utc) - timedelta(
         minutes=settings.POLL_INTERVAL_MINUTES + 1
     )

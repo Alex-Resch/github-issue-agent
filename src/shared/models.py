@@ -44,13 +44,6 @@ class Repository(BaseModel):
     open_issues_count: int = 0
 
 
-class GitHubIssueEvent(BaseModel):
-    action: str
-    issue: Issue
-    repository: Repository
-    sender: User
-
-
 # ---------------------------------------------------------------------------
 # Claude Evaluation Model
 # ---------------------------------------------------------------------------
