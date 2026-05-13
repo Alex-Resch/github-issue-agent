@@ -1,14 +1,12 @@
 import logging
 from datetime import datetime, timedelta, timezone
-
-import httpx
 from httpx import Response
 
 from src.claude_service import evaluate_issue_commented
 from src.email_service import send_evaluation_email
 from src.shared.config import settings
 from src.shared.models import Issue, User, Label, Comment
-from src.shared.functions import fetch_repo_info
+from src.shared.functions import fetch_repo_info, fetch
 from src.poll.issues import fetch_top_contributors
 
 logger = logging.getLogger(__name__)
@@ -48,20 +46,15 @@ def convert_to_comments(response: Response) -> list[Comment]:
 
 async def fetch_new_comments(repo_full_name: str, since: datetime) -> list[Comment]:
     """Fetch all new comments on issues since the given datetime."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}/issues/comments",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-            params={
-                "since": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "sort": "created",
-                "direction": "desc",
-                "per_page": 50,
-            },
-        )
+    params = {
+        "since": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sort": "created",
+        "direction": "desc",
+        "per_page": 50,
+    }
+    response = await fetch(
+        url=f"/repos/{repo_full_name}/issues/comments", params=params
+    )
 
     if response.status_code != 200:
         logger.error(
@@ -74,14 +67,9 @@ async def fetch_new_comments(repo_full_name: str, since: datetime) -> list[Comme
 
 async def fetch_issue(repo_full_name: str, issue_number: int) -> Issue | None:
     """Fetch a single issue by number."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}/issues/{issue_number}",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
+    response = await fetch(
+        url=f"/repos/{repo_full_name}/issues/{issue_number}", params=None
+    )
 
     if response.status_code != 200:
         logger.error(f"Failed to fetch issue #{issue_number}: {response.status_code}")
@@ -109,15 +97,10 @@ async def fetch_issue(repo_full_name: str, issue_number: int) -> Issue | None:
 
 async def fetch_all_comments(repo_full_name: str, issue_number: int) -> list[Comment]:
     """Fetch all comments on a specific issue."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}/issues/{issue_number}/comments",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-            params={"per_page": 100},
-        )
+    response = await fetch(
+        url=f"/repos/{repo_full_name}/issues/{issue_number}/comments",
+        params={"per_page": 100},
+    )
 
     if response.status_code != 200:
         return []

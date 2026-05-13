@@ -1,13 +1,12 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-import httpx
 
 from src.shared.config import settings
 from src.shared.models import Issue, User, Label
 from src.claude_service import evaluate_issue_opened
 from src.email_service import send_evaluation_email
-from src.shared.functions import fetch_repo_info
+from src.shared.functions import fetch_repo_info, fetch
 
 logger = logging.getLogger(__name__)
 
@@ -51,37 +50,26 @@ def is_feature_request(issue: Issue) -> bool:
 
 
 async def fetch_top_contributors(repo_full_name: str, top_n: int = 5) -> set[str]:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}/contributors",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-            params={"per_page": top_n},
-        )
+    response = await fetch(
+        url=f"/repos/{repo_full_name}/contributors", params={"per_page": top_n}
+    )
+
     if response.status_code != 200:
+        logger.error(f"Failed to fetch top contributors for {repo_full_name} ")
         return set()
     return {c["login"].lower() for c in response.json()}
 
 
 async def fetch_new_issues(repo_full_name: str, since: datetime) -> list[Issue]:
     """Fetch issues opened since the given datetime."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}/issues",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-            params={
-                "state": "open",
-                "since": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "sort": "created",
-                "direction": "desc",
-                "per_page": 50,
-            },
-        )
+    params = {
+        "state": "open",
+        "since": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sort": "created",
+        "direction": "desc",
+        "per_page": 50,
+    }
+    response = await fetch(url=f"/repos/{repo_full_name}/issues", params=params)
 
     if response.status_code != 200:
         logger.error(

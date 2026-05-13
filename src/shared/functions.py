@@ -1,23 +1,20 @@
 import httpx
 import logging
 
+from httpx import Response
+
 from src.shared.config import settings
 from src.shared.models import Repository
 
 
 logger = logging.getLogger(__name__)
 
+BASE_GITHUB_URL = "https://api.github.com"
+
 
 async def fetch_repo_info(repo_full_name: str) -> Repository | None:
     """Fetch repository metadata from GitHub API."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.github.com/repos/{repo_full_name}",
-            headers={
-                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
-                "Accept": "application/vnd.github+json",
-            },
-        )
+    response = await fetch(url=f"/repos/{repo_full_name}", params=None)
 
     if response.status_code != 200:
         logger.error(
@@ -35,3 +32,15 @@ async def fetch_repo_info(repo_full_name: str) -> Repository | None:
         stargazers_count=data.get("stargazers_count", 0),
         open_issues_count=data.get("open_issues_count", 0),
     )
+
+
+async def fetch(url: str, params: dict | None) -> Response:
+    async with httpx.AsyncClient() as client:
+        return await client.get(
+            BASE_GITHUB_URL + url,
+            headers={
+                "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
+                "Accept": "application/vnd.github+json",
+            },
+            params=params,
+        )
