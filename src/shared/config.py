@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     POLL_INTERVAL_MINUTES: int = 20
 
     class Config:
-        env_file = "../.env"
+        env_file = ".env"
         env_file_encoding = "utf-8"
 
 

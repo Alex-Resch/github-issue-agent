@@ -4,8 +4,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from config import settings
-from models import IssueEvaluation, Issue, Repository
+from src.shared.config import settings
+from src.shared.models import IssueEvaluation, Issue, Repository
 
 logger = logging.getLogger(__name__)
 

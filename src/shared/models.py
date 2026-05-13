@@ -3,8 +3,14 @@ from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
-# GitHub Webhook Models
+# Poll Models
 # ---------------------------------------------------------------------------
+
+
+class Comment(BaseModel):
+    commenter: str
+    issue_number: int
+    body: str
 
 
 class Label(BaseModel):
